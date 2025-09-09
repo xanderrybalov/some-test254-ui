@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
 import type { MovieState, MovieSearchResponse } from '../types/movie';
+import { ApiService } from '../utils/api';
 import { API_CONFIG } from '../utils/constants';
 
 const initialState: MovieState = {
@@ -16,24 +17,11 @@ export const searchMovies = createAsyncThunk(
   'movies/searchMovies',
   async ({ query, page = 1 }: { query: string; page?: number }, { rejectWithValue }) => {
     try {
-      const response = await fetch(
-        `${API_CONFIG.BASE_URL}${API_CONFIG.ENDPOINTS.SEARCH_MOVIES}`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: query.trim(),
-          }),
-        }
-      );
+      const response = await ApiService.post(API_CONFIG.ENDPOINTS.SEARCH_MOVIES, {
+        query: query.trim(),
+      });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data: MovieSearchResponse = await response.json();
+      const data = await ApiService.handleResponse<MovieSearchResponse>(response);
       
       if (!data.items || data.items.length === 0) {
         throw new Error('No movies found');
