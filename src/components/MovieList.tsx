@@ -1,8 +1,9 @@
 import React from 'react';
-import { Row, Col, Card, Typography, Empty, Spin } from 'antd';
-import { CalendarOutlined, ClockCircleOutlined, StarOutlined, UserOutlined } from '@ant-design/icons';
+import { Row, Col, Card, Typography, Empty, Spin, Tooltip } from 'antd';
+import { CalendarOutlined, ClockCircleOutlined, StarOutlined, StarFilled, UserOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
-import { useAppSelector } from '../hooks/redux';
+import { useAppDispatch, useAppSelector } from '../hooks/redux';
+import { toggleFavorite, fetchFavorites } from '../store/favoritesSlice';
 import type { Movie } from '../types/movie';
 
 const { Text, Title } = Typography;
@@ -249,7 +250,44 @@ const style = document.createElement('style');
 style.textContent = GlobalCardStyles;
 document.head.appendChild(style);
 
-const renderMovieItem = (movie: Movie, index: number) => (
+const FavoriteButton = styled.div<{ $isAuthenticated: boolean; $isFavorite: boolean }>`
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  cursor: ${props => props.$isAuthenticated ? 'pointer' : 'not-allowed'};
+  transition: all 0.2s ease;
+  z-index: 2;
+  
+  color: ${props => {
+    if (!props.$isAuthenticated) return '#9ca3af'; // Gray for unauthenticated
+    return props.$isFavorite ? '#f59e0b' : '#fbbf24'; // Darker yellow for favorited, lighter for unfavorited
+  }};
+  
+  &:hover {
+    ${props => props.$isAuthenticated ? `
+      color: #f59e0b;
+      transform: scale(1.1);
+    ` : `
+      color: #6b7280;
+    `}
+  }
+  
+  &:active {
+    transform: ${props => props.$isAuthenticated ? 'scale(0.95)' : 'none'};
+  }
+  
+  .anticon {
+    font-size: 18px;
+  }
+`;
+
+const renderMovieItem = (
+  movie: Movie, 
+  index: number, 
+  isAuthenticated: boolean, 
+  isFavorite: boolean,
+  onToggleFavorite: (movieId: string) => void
+) => (
   <Col 
     key={movie.id} 
     xs={24}    // 1 card per row on mobile
@@ -262,6 +300,24 @@ const renderMovieItem = (movie: Movie, index: number) => (
     }}
   >
     <MovieCard>
+      {/* Favorite Button */}
+      <Tooltip 
+        title={!isAuthenticated ? "Need to register or login to add movie to favorites" : ""}
+        placement="left"
+      >
+        <FavoriteButton
+          $isAuthenticated={isAuthenticated}
+          $isFavorite={isFavorite}
+          onClick={() => {
+            if (isAuthenticated) {
+              onToggleFavorite(movie.id);
+            }
+          }}
+        >
+          {isFavorite ? <StarFilled /> : <StarOutlined />}
+        </FavoriteButton>
+      </Tooltip>
+      
       <MovieContent>
         <MoviePoster
           src={movie.poster && movie.poster !== 'N/A' && movie.poster.trim() ? movie.poster : 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIwIiBoZWlnaHQ9IjE4MCIgdmlld0JveD0iMCAwIDEyMCAxODAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CjxyZWN0IHdpZHRoPSIxMjAiIGhlaWdodD0iMTgwIiBmaWxsPSIjRjVGNUY1Ii8+CjxwYXRoIGQ9Ik00MCA2MEw4MCA2MEw2MCA5MEw0MCA2MFoiIGZpbGw9IiNEOUQ5RDkiLz4KPHN2Zz4K'}
@@ -309,21 +365,53 @@ const renderMovieItem = (movie: Movie, index: number) => (
 );
 
 export const MovieList: React.FC = () => {
+  const dispatch = useAppDispatch();
   const { movies, loading, error, searchQuery, totalResults } = useAppSelector((state) => state.movies);
+  const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const { favoriteMovieIds, favoriteMovies, showFavoritesOnly, loading: favoritesLoading } = useAppSelector((state) => state.favorites);
 
-  if (loading && movies.length === 0) {
+  // Auto-fetch favorites when switching to favorites mode
+  React.useEffect(() => {
+    if (showFavoritesOnly && isAuthenticated && user?.id && favoriteMovies.length === 0) {
+      dispatch(fetchFavorites(user.id));
+    }
+  }, [showFavoritesOnly, isAuthenticated, user?.id, favoriteMovies.length, dispatch]);
+
+  // Choose movies to display based on favorites toggle
+  const filteredMovies = showFavoritesOnly 
+    ? favoriteMovies  // Show favorite movies from API
+    : movies;         // Show search results
+
+  const handleToggleFavorite = (movieId: string) => {
+    if (isAuthenticated && user?.id) {
+      dispatch(toggleFavorite({ userId: user.id, movieId }))
+        .then(() => {
+          // Refresh favorites after toggle to update favoriteMovies
+          if (showFavoritesOnly) {
+            dispatch(fetchFavorites(user.id));
+          }
+        });
+    }
+  };
+
+  // Show loading for both search results and favorites
+  const isLoading = loading || (showFavoritesOnly && favoritesLoading);
+  
+  if (isLoading && filteredMovies.length === 0) {
     return (
       <LoadingContainer>
         <Spin size="large">
           <div style={{ padding: '50px' }}>
-            <Text type="secondary">Searching movies...</Text>
+            <Text type="secondary">
+              {showFavoritesOnly ? 'Loading favorite movies...' : 'Searching movies...'}
+            </Text>
           </div>
         </Spin>
       </LoadingContainer>
     );
   }
 
-  if (error) {
+  if (error && !showFavoritesOnly) {
     return (
       <ListContainer>
         <ErrorCard>
@@ -339,7 +427,8 @@ export const MovieList: React.FC = () => {
     );
   }
 
-  if (!searchQuery && movies.length === 0) {
+  // Show empty state for non-favorite mode
+  if (!showFavoritesOnly && !searchQuery && movies.length === 0) {
     return (
       <ListContainer>
         <Empty 
@@ -350,11 +439,17 @@ export const MovieList: React.FC = () => {
     );
   }
 
-  if (movies.length === 0 && searchQuery) {
+  // Show empty state when no results found
+  if (filteredMovies.length === 0) {
     return (
       <ListContainer>
         <Empty 
-          description={`No movies found for "${searchQuery}"`}
+          description={showFavoritesOnly 
+            ? "No favorite movies yet. Add some movies to your favorites!" 
+            : searchQuery 
+              ? `No movies found for "${searchQuery}"`
+              : "Start typing to search for movies"
+          }
           image={Empty.PRESENTED_IMAGE_SIMPLE}
         />
       </ListContainer>
@@ -363,15 +458,28 @@ export const MovieList: React.FC = () => {
 
   return (
     <ListContainer>
-      {searchQuery && (
+      {searchQuery && !showFavoritesOnly && (
         <div style={{ marginBottom: 24 }}>
           <Text type="secondary">
             Found {totalResults} results for "{searchQuery}"
           </Text>
         </div>
       )}
+      {showFavoritesOnly && (
+        <div style={{ marginBottom: 24 }}>
+          <Text type="secondary">
+            Showing {filteredMovies.length} favorite movie{filteredMovies.length !== 1 ? 's' : ''}
+          </Text>
+        </div>
+      )}
       <Row gutter={[16, 16]}>
-        {movies.map((movie, index) => renderMovieItem(movie, index))}
+        {filteredMovies.map((movie, index) => renderMovieItem(
+          movie, 
+          index, 
+          isAuthenticated,
+          favoriteMovieIds.includes(movie.id),
+          handleToggleFavorite
+        ))}
       </Row>
     </ListContainer>
   );

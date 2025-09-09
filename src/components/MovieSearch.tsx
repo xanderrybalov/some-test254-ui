@@ -5,6 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import styled from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { searchMovies, setSearchQuery, clearMovies } from '../store/movieSlice';
+import { setShowFavoritesOnly } from '../store/favoritesSlice';
 
 const SearchContainer = styled.div`
   width: 100%;
@@ -30,6 +31,7 @@ interface SearchFormData {
 export const MovieSearch: React.FC = () => {
   const dispatch = useAppDispatch();
   const { loading, searchQuery, error } = useAppSelector((state) => state.movies);
+  const { loading: favoritesLoading } = useAppSelector((state) => state.favorites);
   
   const { control, handleSubmit, reset, watch } = useForm<SearchFormData>({
     defaultValues: {
@@ -41,6 +43,8 @@ export const MovieSearch: React.FC = () => {
 
   const onSubmit = (data: SearchFormData) => {
     if (data.query.trim()) {
+      // Exit favorites mode when starting a new search
+      dispatch(setShowFavoritesOnly(false));
       dispatch(setSearchQuery(data.query.trim()));
       dispatch(searchMovies({ query: data.query.trim(), page: 1 }));
     }
@@ -70,20 +74,22 @@ export const MovieSearch: React.FC = () => {
               {...field}
               placeholder="Search for movies..."
               size="large"
-              loading={loading}
+              loading={loading || favoritesLoading}
               allowClear
               enterButton={
                 <Button 
                   type="primary" 
                   icon={<SearchOutlined />}
                   htmlType="submit"
-                  loading={loading}
+                  loading={loading || favoritesLoading}
                 >
                   Search
                 </Button>
               }
               onSearch={(value) => {
                 if (value.trim()) {
+                  // Exit favorites mode when starting a new search
+                  dispatch(setShowFavoritesOnly(false));
                   field.onChange(value);
                   dispatch(setSearchQuery(value.trim()));
                   dispatch(searchMovies({ query: value.trim(), page: 1 }));

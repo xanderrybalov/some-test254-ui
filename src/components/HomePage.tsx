@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { Header } from './Header';
 import { MovieSearch } from './MovieSearch';
 import { MovieList } from './MovieList';
+import { useAppSelector } from '../hooks/redux';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
@@ -33,18 +34,26 @@ const WelcomeSection = styled.div`
 `;
 
 export const HomePage: React.FC = () => {
+  const { showFavoritesOnly } = useAppSelector((state) => state.favorites);
+
   return (
     <StyledLayout>
       <Header />
       <StyledContent>
         <WelcomeSection>
-          <Title level={1}>Discover Amazing Movies</Title>
+          <Title level={1}>
+            {showFavoritesOnly ? 'Your Favorite Movies' : 'Discover Amazing Movies'}
+          </Title>
           <Text type="secondary" style={{ fontSize: '16px' }}>
-            Search through thousands of movies and find your next favorite film
+            {showFavoritesOnly 
+              ? 'Here are all the movies you\'ve added to your favorites'
+              : 'Search through thousands of movies and find your next favorite film'
+            }
           </Text>
         </WelcomeSection>
         
-        <MovieSearch />
+        {/* Show search only when not in favorites mode */}
+        {!showFavoritesOnly && <MovieSearch />}
         <MovieList />
       </StyledContent>
     </StyledLayout>

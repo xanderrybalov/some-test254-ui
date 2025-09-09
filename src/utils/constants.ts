@@ -12,6 +12,10 @@ export const API_CONFIG = {
     AUTH_REGISTER: '/auth/register', // POST
     AUTH_LOGIN: '/auth/login',       // POST  
     AUTH_VERIFY: '/auth/verify',     // POST
+    
+    // Favorites
+    TOGGLE_FAVORITE: '/users/:userId/movies/:movieId/favorite', // PUT - Toggle favorite status
+    GET_USER_MOVIES: '/users/:userId/movies', // GET - Get user movies (with ?favorites=true for favorites)
   },
 } as const;
 

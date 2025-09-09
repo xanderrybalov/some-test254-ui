@@ -233,7 +233,7 @@ export const RegisterForm: React.FC = () => {
     <AuthContainer>
       <AuthCard>
         <AuthTitle level={2}>
-          Join Movie Finder! 🚀
+          Join Rybalov Movie Finder! 🚀
         </AuthTitle>
         
         {error && (

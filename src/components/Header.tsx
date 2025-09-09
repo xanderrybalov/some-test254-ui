@@ -1,12 +1,13 @@
 import React from 'react';
 import { Layout, Typography, Switch, Space, Button, Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
-import { SunOutlined, MoonOutlined, VideoCameraOutlined, UserOutlined, LogoutOutlined, LoginOutlined } from '@ant-design/icons';
+import { SunOutlined, MoonOutlined, VideoCameraOutlined, UserOutlined, LogoutOutlined, LoginOutlined, StarOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTheme } from '../styles/ThemeContext';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { logout } from '../store/authSlice';
+import { toggleShowFavoritesOnly, fetchFavorites, clearFavorites } from '../store/favoritesSlice';
 
 const { Header: AntHeader } = Layout;
 const { Title } = Typography;
@@ -90,15 +91,53 @@ const LoginButton = styled(Button)`
   }
 `;
 
+const FavoritesButton = styled(Button)<{ $isActive: boolean }>`
+  border: none;
+  background: ${props => props.$isActive ? 'rgba(251, 191, 36, 0.15)' : 'transparent'};
+  color: ${props => props.$isActive ? '#f59e0b' : '#fbbf24'};
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-weight: ${props => props.$isActive ? '600' : '500'};
+  font-size: 14px;
+  transition: all 0.2s ease;
+  
+  &:hover, &:focus {
+    color: #f59e0b;
+    background: rgba(251, 191, 36, 0.15);
+    transform: ${props => props.$isActive ? 'none' : 'translateY(-1px)'};
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+  
+  .anticon {
+    font-size: 16px;
+    margin-right: 6px;
+  }
+`;
+
 export const Header: React.FC = () => {
   const { themeMode, toggleTheme } = useTheme();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
+  const { showFavoritesOnly } = useAppSelector((state) => state.favorites);
+
 
   const handleLogout = () => {
     dispatch(logout());
+    dispatch(clearFavorites());
     navigate('/');
+  };
+
+  const handleToggleFavorites = () => {
+    dispatch(toggleShowFavoritesOnly());
+    
+    // Always fetch fresh favorites data when switching to favorites view
+    if (!showFavoritesOnly && user?.id) {
+      dispatch(fetchFavorites(user.id));
+    }
   };
 
   const userMenuItems: MenuProps['items'] = [
@@ -124,7 +163,7 @@ export const Header: React.FC = () => {
       <Link to="/" style={{ textDecoration: 'none' }}>
         <Logo>
           <VideoCameraOutlined />
-          <Title level={3}>Movie Finder</Title>
+          <Title level={3}>Rybalov Movie Finder</Title>
         </Logo>
       </Link>
       
@@ -141,6 +180,19 @@ export const Header: React.FC = () => {
             <MoonOutlined />
           </Space>
         </ThemeControls>
+
+        {/* Favorites Button - Only for authenticated users */}
+        {isAuthenticated && (
+          <FavoritesButton 
+            type="text"
+            icon={<StarOutlined />}
+            title={showFavoritesOnly ? "Show All Movies" : "Show Favorites Only"}
+            onClick={handleToggleFavorites}
+            $isActive={showFavoritesOnly}
+          >
+            {showFavoritesOnly ? "All Movies" : "Favorites"}
+          </FavoritesButton>
+        )}
 
         <AuthControls>
           {isAuthenticated ? (
