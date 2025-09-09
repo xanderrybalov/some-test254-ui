@@ -104,10 +104,11 @@ const StyledForm = styled(Form)`
   }
   
   .ant-input, .ant-input-password {
-    height: 48px;
     border-radius: 12px;
     border: 2px solid ${({ theme }) => theme.colors.border};
     background: ${({ theme }) => theme.colors.surface};
+    padding: 12px 16px;
+    font-size: 16px;
     
     &:hover, &:focus {
       border-color: ${({ theme }) => theme.colors.primary};
@@ -116,21 +117,44 @@ const StyledForm = styled(Form)`
   }
   
   .ant-input-affix-wrapper {
-    height: 48px;
     border-radius: 12px;
     border: 2px solid ${({ theme }) => theme.colors.border};
     background: ${({ theme }) => theme.colors.surface};
+    padding: 0 16px;
+    
+    .ant-input {
+      background: transparent;
+      border: none;
+      box-shadow: none;
+      padding: 12px 0;
+      margin-left: 8px;
+    }
+    
+    .ant-input-prefix {
+      margin-right: 12px;
+      color: ${({ theme }) => theme.colors.textSecondary};
+      font-size: 16px;
+    }
+    
+    .ant-input-suffix {
+      margin-left: 12px;
+      color: ${({ theme }) => theme.colors.textSecondary};
+      font-size: 16px;
+    }
     
     &:hover, &.ant-input-affix-wrapper-focused {
       border-color: ${({ theme }) => theme.colors.primary};
       box-shadow: 0 0 0 3px ${({ theme }) => theme.colors.primary}20;
+      
+      .ant-input-prefix, .ant-input-suffix {
+        color: ${({ theme }) => theme.colors.primary};
+      }
     }
   }
 `;
 
 const SubmitButton = styled(Button)`
   width: 100%;
-  height: 48px;
   border-radius: 12px;
   background: linear-gradient(135deg, ${({ theme }) => theme.colors.primary}, #ff6b6b);
   border: none;
