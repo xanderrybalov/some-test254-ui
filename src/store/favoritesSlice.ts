@@ -2,6 +2,8 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import type { FavoritesState, ToggleFavoriteRequest } from '../types/favorites';
 import { ApiService } from '../utils/api';
 import { API_CONFIG } from '../utils/constants';
+import type { RootState } from '.';
+import type { Movie } from '../types/movie';
 
 const initialState: FavoritesState = {
   favoriteMovieIds: localStorage.getItem('favoriteMovieIds') 
@@ -23,7 +25,7 @@ export const toggleFavorite = createAsyncThunk(
         .replace(':movieId', movieId);
       
       // Get current favorites state to determine new toggle state
-      const state = getState() as any;
+      const state = getState() as RootState;
       const currentFavorites = state.favorites.favoriteMovieIds as string[];
       const isCurrentlyFavorite = currentFavorites.includes(movieId);
       const newFavoriteState = !isCurrentlyFavorite;
@@ -65,7 +67,7 @@ export const fetchFavorites = createAsyncThunk(
       
       // API returns array of favorite movies directly
       const favoriteMovies = Array.isArray(data) ? data : [];
-      const favoriteIds = favoriteMovies.map((movie: any) => movie.id);
+      const favoriteIds = favoriteMovies.map((movie: Movie) => movie.id);
       
       
       return { favoriteMovies, favoriteIds };
