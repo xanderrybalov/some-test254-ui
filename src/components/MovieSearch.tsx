@@ -72,7 +72,7 @@ export const MovieSearch: React.FC = () => {
           render={({ field, fieldState: { error } }) => (
             <Input.Search
               {...field}
-              placeholder="Search for movies..."
+              placeholder="Search movies..."
               size="large"
               loading={loading || favoritesLoading}
               allowClear
