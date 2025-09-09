@@ -1,12 +1,13 @@
 import React from 'react';
 import { Row, Col, Card, Typography, Empty, Spin, Tooltip } from 'antd';
-import { CalendarOutlined, ClockCircleOutlined, StarOutlined, StarFilled, UserOutlined, DeleteOutlined } from '@ant-design/icons';
+import { CalendarOutlined, ClockCircleOutlined, StarOutlined, StarFilled, UserOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { toggleFavorite, fetchFavorites } from '../store/favoritesSlice';
 import { deleteUserMovie, fetchUserMovies } from '../store/userMovieSlice';
 import { DeleteMovieConfirmation } from './DeleteMovieConfirmation';
+import { EditMovieModal } from './EditMovieModal';
 import type { Movie } from '../types/movie';
 
 const { Text, Title } = Typography;
@@ -286,6 +287,32 @@ const FavoriteButton = styled.div<{ $isAuthenticated: boolean; $isFavorite: bool
   }
 `;
 
+const EditButton = styled.div<{ $canEdit: boolean }>`
+  position: absolute;
+  bottom: 16px;
+  right: 86px;
+  cursor: ${props => props.$canEdit ? 'pointer' : 'not-allowed'};
+  transition: all 0.2s ease;
+  z-index: 2;
+  color: #52c41a;
+  opacity: ${props => props.$canEdit ? 1 : 0.5};
+  
+  &:hover {
+    ${props => props.$canEdit ? `
+      color: #73d13d;
+      transform: scale(1.1);
+    ` : ''}
+  }
+  
+  &:active {
+    transform: ${props => props.$canEdit ? 'scale(0.95)' : 'none'};
+  }
+  
+  .anticon {
+    font-size: 16px;
+  }
+`;
+
 const DeleteButton = styled.div<{ $canDelete: boolean }>`
   position: absolute;
   bottom: 16px;
@@ -320,6 +347,8 @@ const renderMovieItem = (
   onToggleFavorite: (movieId: string) => void,
   canDelete: boolean,
   onDeleteMovie: (movieId: string, movieTitle: string) => void,
+  canEdit: boolean,
+  onEditMovie: (movie: Movie) => void,
   onMovieClick: (movieId: string) => void
 ) => (
   <Col 
@@ -334,6 +363,26 @@ const renderMovieItem = (
     }}
   >
     <MovieCard onClick={() => onMovieClick(movie.id)}>
+      {/* Edit Button */}
+      {canEdit && (
+        <Tooltip 
+          title="Edit this movie"
+          placement="left"
+        >
+          <EditButton
+            $canEdit={canEdit}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent card click
+              if (canEdit) {
+                onEditMovie(movie);
+              }
+            }}
+          >
+            <EditOutlined />
+          </EditButton>
+        </Tooltip>
+      )}
+
       {/* Delete Button */}
       {canDelete && (
         <Tooltip 
@@ -425,7 +474,7 @@ export const MovieList: React.FC = () => {
   const { movies, loading, error, searchQuery, totalResults } = useAppSelector((state) => state.movies);
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const { favoriteMovieIds, favoriteMovies, showFavoritesOnly, loading: favoritesLoading } = useAppSelector((state) => state.favorites);
-  const { userMovies, loading: userMoviesLoading } = useAppSelector((state) => state.userMovies);
+  const { userMovies, loading: userMoviesLoading, editLoading, deleteLoading } = useAppSelector((state) => state.userMovies);
   
   // Delete confirmation state
   const [deleteConfirmation, setDeleteConfirmation] = React.useState<{
@@ -437,6 +486,19 @@ export const MovieList: React.FC = () => {
     movieId: '',
     movieTitle: '',
   });
+
+  // Edit movie state
+  const [editMovie, setEditMovie] = React.useState<{
+    visible: boolean;
+    movie: Movie | null;
+  }>({
+    visible: false,
+    movie: null,
+  });
+
+  // Refs to track previous loading states for auto-refresh
+  const prevEditLoadingRef = React.useRef<boolean>(editLoading);
+  const prevDeleteLoadingRef = React.useRef<boolean>(deleteLoading);
 
   // Auto-fetch favorites when switching to favorites mode
   React.useEffect(() => {
@@ -451,6 +513,27 @@ export const MovieList: React.FC = () => {
       dispatch(fetchUserMovies(user.id));
     }
   }, [isAuthenticated, user?.id, dispatch]);
+
+  // Auto-refresh user movies after edit or delete operations complete
+  // This ensures we have the latest data from server and sync with any server-side changes
+  React.useEffect(() => {
+    const wasEditLoading = prevEditLoadingRef.current;
+    const wasDeleteLoading = prevDeleteLoadingRef.current;
+    
+    // Check if edit operation just completed successfully (was loading, now not loading)
+    if (wasEditLoading && !editLoading && isAuthenticated && user?.id) {
+      dispatch(fetchUserMovies(user.id));
+    }
+    
+    // Check if delete operation just completed successfully (was loading, now not loading) 
+    if (wasDeleteLoading && !deleteLoading && isAuthenticated && user?.id) {
+      dispatch(fetchUserMovies(user.id));
+    }
+    
+    // Update refs for next render
+    prevEditLoadingRef.current = editLoading;
+    prevDeleteLoadingRef.current = deleteLoading;
+  }, [editLoading, deleteLoading, isAuthenticated, user?.id, dispatch]);
 
 
   // Choose movies to display based on current mode
@@ -484,6 +567,13 @@ export const MovieList: React.FC = () => {
     });
   };
 
+  const handleEditMovie = (movie: Movie) => {
+    setEditMovie({
+      visible: true,
+      movie,
+    });
+  };
+
   const handleConfirmDelete = async () => {
     if (isAuthenticated && user?.id && deleteConfirmation.movieId) {
       try {
@@ -492,9 +582,7 @@ export const MovieList: React.FC = () => {
           movieId: deleteConfirmation.movieId,
         })).unwrap();
         
-        // Refresh user movies list after successful deletion
-        dispatch(fetchUserMovies(user.id));
-        
+        // List will be automatically refreshed by useEffect
         setDeleteConfirmation({ visible: false, movieId: '', movieTitle: '' });
       } catch {
         // Error handling is done in the slice
@@ -504,6 +592,10 @@ export const MovieList: React.FC = () => {
 
   const handleCancelDelete = () => {
     setDeleteConfirmation({ visible: false, movieId: '', movieTitle: '' });
+  };
+
+  const handleCloseEditModal = () => {
+    setEditMovie({ visible: false, movie: null });
   };
 
   const handleMovieClick = (movieId: string) => {
@@ -598,6 +690,9 @@ export const MovieList: React.FC = () => {
           // Can delete if it's a user-created movie (source: 'custom')
           movie.source === 'custom',
           handleDeleteMovie,
+          // Can edit if it's a user-created movie (source: 'custom')
+          movie.source === 'custom',
+          handleEditMovie,
           handleMovieClick
         ))}
       </Row>
@@ -606,9 +701,16 @@ export const MovieList: React.FC = () => {
       <DeleteMovieConfirmation
         visible={deleteConfirmation.visible}
         movieTitle={deleteConfirmation.movieTitle}
-        loading={userMoviesLoading}
+        loading={deleteLoading}
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
+      />
+      
+      {/* Edit Movie Modal */}
+      <EditMovieModal
+        visible={editMovie.visible}
+        movie={editMovie.movie}
+        onClose={handleCloseEditModal}
       />
     </ListContainer>
   );

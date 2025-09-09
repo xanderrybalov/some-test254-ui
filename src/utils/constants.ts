@@ -19,6 +19,7 @@ export const API_CONFIG = {
     
     // User Movies
     ADD_USER_MOVIE: '/users/:userId/movies', // POST - Add a new movie
+    EDIT_USER_MOVIE: '/users/:userId/movies/:movieId', // PUT - Edit a movie
     DELETE_USER_MOVIE: '/users/:userId/movies/:movieId', // DELETE - Delete a movie
   },
 } as const;

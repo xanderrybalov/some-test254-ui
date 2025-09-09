@@ -1,3 +1,5 @@
+import type { Movie } from './movie';
+
 export interface CreateMovieData {
   title: string;
   year: number;
@@ -7,8 +9,10 @@ export interface CreateMovieData {
 }
 
 export interface UserMovieState {
-  userMovies: any[];
+  userMovies: Movie[];
   loading: boolean;
+  editLoading: boolean;
+  deleteLoading: boolean;
   error: string | null;
 }
 
@@ -20,4 +24,18 @@ export interface AddMovieRequest {
 export interface DeleteMovieRequest {
   userId: string;
   movieId: string;
+}
+
+export interface EditMovieData {
+  title: string;
+  year: number;
+  runtimeMinutes: number;
+  genre: string[];
+  director: string[];
+}
+
+export interface EditMovieRequest {
+  userId: string;
+  movieId: string;
+  movieData: EditMovieData;
 }

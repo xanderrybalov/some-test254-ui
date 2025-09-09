@@ -4,6 +4,7 @@ import { ApiService } from '../utils/api';
 import { API_CONFIG } from '../utils/constants';
 import type { RootState } from '.';
 import type { Movie } from '../types/movie';
+import { editUserMovie, deleteUserMovie } from './userMovieSlice';
 
 const initialState: FavoritesState = {
   favoriteMovieIds: localStorage.getItem('favoriteMovieIds') 
@@ -147,6 +148,26 @@ const favoritesSlice = createSlice({
       .addCase(fetchFavorites.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      // Sync user movie edits to favorites
+      .addCase(editUserMovie.fulfilled, (state, action) => {
+        const { movieId, updatedMovie } = action.payload;
+        const index = state.favoriteMovies.findIndex(movie => movie.id === movieId);
+        if (index !== -1) {
+          state.favoriteMovies[index] = updatedMovie;
+        }
+      })
+      // Sync user movie deletes to favorites
+      .addCase(deleteUserMovie.fulfilled, (state, action) => {
+        const { movieId } = action.payload;
+        // Remove from favorite movies list
+        state.favoriteMovies = state.favoriteMovies.filter(movie => movie.id !== movieId);
+        // Remove from favorite IDs list
+        const idIndex = state.favoriteMovieIds.indexOf(movieId);
+        if (idIndex > -1) {
+          state.favoriteMovieIds.splice(idIndex, 1);
+          localStorage.setItem('favoriteMovieIds', JSON.stringify(state.favoriteMovieIds));
+        }
       });
   },
 });

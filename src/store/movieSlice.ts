@@ -3,6 +3,7 @@ import type { PayloadAction } from '@reduxjs/toolkit';
 import type { MovieState, MovieSearchResponse } from '../types/movie';
 import { ApiService } from '../utils/api';
 import { API_CONFIG } from '../utils/constants';
+import { editUserMovie, deleteUserMovie } from './userMovieSlice';
 
 const initialState: MovieState = {
   movies: [],
@@ -80,6 +81,19 @@ const movieSlice = createSlice({
         if (state.currentPage === 1) {
           state.movies = [];
         }
+      })
+      // Sync user movie edits to search results
+      .addCase(editUserMovie.fulfilled, (state, action) => {
+        const { movieId, updatedMovie } = action.payload;
+        const index = state.movies.findIndex(movie => movie.id === movieId);
+        if (index !== -1) {
+          state.movies[index] = updatedMovie;
+        }
+      })
+      // Sync user movie deletes to search results
+      .addCase(deleteUserMovie.fulfilled, (state, action) => {
+        const { movieId } = action.payload;
+        state.movies = state.movies.filter(movie => movie.id !== movieId);
       });
   },
 });
