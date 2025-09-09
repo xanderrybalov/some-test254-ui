@@ -194,7 +194,7 @@ export const LoginForm: React.FC = () => {
     <AuthContainer>
       <AuthCard>
         <AuthTitle level={2}>
-          Welcome Back! 🎬
+          Welcome Back!
         </AuthTitle>
         
         {error && (
@@ -266,7 +266,7 @@ export const LoginForm: React.FC = () => {
             loading={loading}
             icon={<LoginOutlined />}
           >
-            Sign In
+            Login
           </SubmitButton>
         </StyledForm>
 
