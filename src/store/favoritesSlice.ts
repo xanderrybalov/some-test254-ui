@@ -69,7 +69,6 @@ export const fetchFavorites = createAsyncThunk(
       const favoriteMovies = Array.isArray(data) ? data : [];
       const favoriteIds = favoriteMovies.map((movie: Movie) => movie.id);
       
-      
       return { favoriteMovies, favoriteIds };
     } catch (error) {
       if (error instanceof TypeError && error.message.includes('fetch')) {

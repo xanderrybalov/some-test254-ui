@@ -2,6 +2,7 @@ import React from 'react';
 import { Row, Col, Card, Typography, Empty, Spin, Tooltip } from 'antd';
 import { CalendarOutlined, ClockCircleOutlined, StarOutlined, StarFilled, UserOutlined, DeleteOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
+import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { toggleFavorite, fetchFavorites } from '../store/favoritesSlice';
 import { deleteUserMovie, fetchUserMovies } from '../store/userMovieSlice';
@@ -27,6 +28,8 @@ const MovieCard = styled(Card)`
   overflow: hidden;
   background: linear-gradient(135deg, ${({ theme }) => theme.colors.surface} 0%, ${({ theme }) => theme.colors.background} 100%);
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   
   /* Animated gradient border */
   &::before {
@@ -316,7 +319,8 @@ const renderMovieItem = (
   isFavorite: boolean,
   onToggleFavorite: (movieId: string) => void,
   canDelete: boolean,
-  onDeleteMovie: (movieId: string, movieTitle: string) => void
+  onDeleteMovie: (movieId: string, movieTitle: string) => void,
+  onMovieClick: (movieId: string) => void
 ) => (
   <Col 
     key={movie.id} 
@@ -329,7 +333,7 @@ const renderMovieItem = (
       animation: `cardFadeInUp 0.6s ease-out ${index * 0.1}s both`
     }}
   >
-    <MovieCard>
+    <MovieCard onClick={() => onMovieClick(movie.id)}>
       {/* Delete Button */}
       {canDelete && (
         <Tooltip 
@@ -338,7 +342,8 @@ const renderMovieItem = (
         >
           <DeleteButton
             $canDelete={canDelete}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent card click
               if (canDelete) {
                 onDeleteMovie(movie.id, movie.title);
               }
@@ -357,7 +362,8 @@ const renderMovieItem = (
         <FavoriteButton
           $isAuthenticated={isAuthenticated}
           $isFavorite={isFavorite}
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation(); // Prevent card click
             if (isAuthenticated) {
               onToggleFavorite(movie.id);
             }
@@ -415,6 +421,7 @@ const renderMovieItem = (
 
 export const MovieList: React.FC = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { movies, loading, error, searchQuery, totalResults } = useAppSelector((state) => state.movies);
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const { favoriteMovieIds, favoriteMovies, showFavoritesOnly, loading: favoritesLoading } = useAppSelector((state) => state.favorites);
@@ -446,13 +453,16 @@ export const MovieList: React.FC = () => {
   }, [isAuthenticated, user?.id, dispatch]);
 
 
-  // Combine all movies for display
-  const allMovies = [...movies, ...userMovies];
-
-  // Choose movies to display based on favorites toggle
-  const filteredMovies = showFavoritesOnly 
-    ? favoriteMovies  // Show favorite movies from API
-    : allMovies;      // Show search results + user movies
+  // Choose movies to display based on current mode
+  const filteredMovies = (() => {
+    if (showFavoritesOnly) {
+      return favoriteMovies; // Show favorite movies from API
+    } else if (searchQuery && searchQuery.trim()) {
+      return movies; // Show only search results when searching
+    } else {
+      return userMovies; // Show user's custom movies when not searching
+    }
+  })();
 
   const handleToggleFavorite = (movieId: string) => {
     if (isAuthenticated && user?.id) {
@@ -494,6 +504,10 @@ export const MovieList: React.FC = () => {
 
   const handleCancelDelete = () => {
     setDeleteConfirmation({ visible: false, movieId: '', movieTitle: '' });
+  };
+
+  const handleMovieClick = (movieId: string) => {
+    navigate(`/movies/${movieId}`);
   };
 
   // Show loading for both search results and favorites
@@ -581,8 +595,10 @@ export const MovieList: React.FC = () => {
           isAuthenticated,
           favoriteMovieIds.includes(movie.id),
           handleToggleFavorite,
-          userMovies.some(userMovie => userMovie.id === movie.id), // Can delete if it's a user-created movie
-          handleDeleteMovie
+          // Can delete if it's a user-created movie (source: 'custom')
+          movie.source === 'custom',
+          handleDeleteMovie,
+          handleMovieClick
         ))}
       </Row>
       
