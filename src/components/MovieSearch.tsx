@@ -1,11 +1,10 @@
 import React from 'react';
 import { Input, Button, Space, Alert } from 'antd';
-import { SearchOutlined, InfoCircleOutlined } from '@ant-design/icons';
+import { SearchOutlined } from '@ant-design/icons';
 import { useForm, Controller } from 'react-hook-form';
 import styled from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { searchMovies, setSearchQuery, clearMovies } from '../store/movieSlice';
-import { API_CONFIG } from '../utils/constants';
 
 const SearchContainer = styled.div`
   width: 100%;

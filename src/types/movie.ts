@@ -1,17 +1,17 @@
 export interface Movie {
   id: string;
+  omdbId: string;
   title: string;
-  year: string;
+  year: number;
+  runtimeMinutes: number;
+  genre: string[];
+  director: string[];
   poster: string;
-  type: string;
-  imdbID: string;
+  source: string;
 }
 
 export interface MovieSearchResponse {
-  Search: Movie[];
-  totalResults: string;
-  Response: string;
-  Error?: string;
+  items: Movie[];
 }
 
 export interface MovieState {

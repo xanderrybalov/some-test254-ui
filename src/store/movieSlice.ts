@@ -35,13 +35,13 @@ export const searchMovies = createAsyncThunk(
       
       const data: MovieSearchResponse = await response.json();
       
-      if (data.Response === 'False') {
-        throw new Error(data.Error || 'Movie not found');
+      if (!data.items || data.items.length === 0) {
+        throw new Error('No movies found');
       }
       
       return {
-        movies: data.Search || [],
-        totalResults: parseInt(data.totalResults) || 0,
+        movies: data.items || [],
+        totalResults: data.items.length, // For now, use actual items count
         page,
         query,
       };
