@@ -1,13 +1,14 @@
 import React from 'react';
 import { Layout, Typography, Switch, Space, Button, Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
-import { SunOutlined, MoonOutlined, VideoCameraOutlined, UserOutlined, LogoutOutlined, LoginOutlined, StarOutlined } from '@ant-design/icons';
+import { SunOutlined, MoonOutlined, VideoCameraOutlined, UserOutlined, LogoutOutlined, LoginOutlined, StarOutlined, PlusOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useTheme } from '../styles/ThemeContext';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { logout } from '../store/authSlice';
 import { toggleShowFavoritesOnly, fetchFavorites, clearFavorites } from '../store/favoritesSlice';
+import { AddMovieModal } from './AddMovieModal';
 
 const { Header: AntHeader } = Layout;
 const { Title } = Typography;
@@ -117,12 +118,39 @@ const FavoritesButton = styled(Button)<{ $isActive: boolean }>`
   }
 `;
 
+const AddMovieButton = styled(Button)`
+  border: none;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  
+  &:hover, &:focus {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: white;
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+  
+  .anticon {
+    font-size: 16px;
+    margin-right: 6px;
+  }
+`;
+
 export const Header: React.FC = () => {
   const { themeMode, toggleTheme } = useTheme();
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const { showFavoritesOnly } = useAppSelector((state) => state.favorites);
+  const [showAddMovieModal, setShowAddMovieModal] = React.useState(false);
 
 
   const handleLogout = () => {
@@ -181,6 +209,18 @@ export const Header: React.FC = () => {
           </Space>
         </ThemeControls>
 
+        {/* Add Movie Button - Only for authenticated users */}
+        {isAuthenticated && (
+          <AddMovieButton 
+            type="primary"
+            icon={<PlusOutlined />}
+            title="Add New Movie"
+            onClick={() => setShowAddMovieModal(true)}
+          >
+            Add Movie
+          </AddMovieButton>
+        )}
+
         {/* Favorites Button - Only for authenticated users */}
         {isAuthenticated && (
           <FavoritesButton 
@@ -226,6 +266,12 @@ export const Header: React.FC = () => {
           )}
         </AuthControls>
       </HeaderControls>
+
+      {/* Add Movie Modal */}
+      <AddMovieModal 
+        visible={showAddMovieModal}
+        onClose={() => setShowAddMovieModal(false)}
+      />
     </StyledHeader>
   );
 };

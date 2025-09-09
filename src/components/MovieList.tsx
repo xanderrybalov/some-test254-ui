@@ -1,9 +1,11 @@
 import React from 'react';
 import { Row, Col, Card, Typography, Empty, Spin, Tooltip } from 'antd';
-import { CalendarOutlined, ClockCircleOutlined, StarOutlined, StarFilled, UserOutlined } from '@ant-design/icons';
+import { CalendarOutlined, ClockCircleOutlined, StarOutlined, StarFilled, UserOutlined, DeleteOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import { useAppDispatch, useAppSelector } from '../hooks/redux';
 import { toggleFavorite, fetchFavorites } from '../store/favoritesSlice';
+import { deleteUserMovie, fetchUserMovies } from '../store/userMovieSlice';
+import { DeleteMovieConfirmation } from './DeleteMovieConfirmation';
 import type { Movie } from '../types/movie';
 
 const { Text, Title } = Typography;
@@ -281,12 +283,40 @@ const FavoriteButton = styled.div<{ $isAuthenticated: boolean; $isFavorite: bool
   }
 `;
 
+const DeleteButton = styled.div<{ $canDelete: boolean }>`
+  position: absolute;
+  bottom: 16px;
+  right: 50px;
+  cursor: ${props => props.$canDelete ? 'pointer' : 'not-allowed'};
+  transition: all 0.2s ease;
+  z-index: 2;
+  color: #ff4d4f;
+  opacity: ${props => props.$canDelete ? 1 : 0.5};
+  
+  &:hover {
+    ${props => props.$canDelete ? `
+      color: #ff7875;
+      transform: scale(1.1);
+    ` : ''}
+  }
+  
+  &:active {
+    transform: ${props => props.$canDelete ? 'scale(0.95)' : 'none'};
+  }
+  
+  .anticon {
+    font-size: 16px;
+  }
+`;
+
 const renderMovieItem = (
   movie: Movie, 
   index: number, 
   isAuthenticated: boolean, 
   isFavorite: boolean,
-  onToggleFavorite: (movieId: string) => void
+  onToggleFavorite: (movieId: string) => void,
+  canDelete: boolean,
+  onDeleteMovie: (movieId: string, movieTitle: string) => void
 ) => (
   <Col 
     key={movie.id} 
@@ -300,6 +330,25 @@ const renderMovieItem = (
     }}
   >
     <MovieCard>
+      {/* Delete Button */}
+      {canDelete && (
+        <Tooltip 
+          title="Delete this movie"
+          placement="left"
+        >
+          <DeleteButton
+            $canDelete={canDelete}
+            onClick={() => {
+              if (canDelete) {
+                onDeleteMovie(movie.id, movie.title);
+              }
+            }}
+          >
+            <DeleteOutlined />
+          </DeleteButton>
+        </Tooltip>
+      )}
+
       {/* Favorite Button */}
       <Tooltip 
         title={!isAuthenticated ? "Need to register or login to add movie to favorites" : ""}
@@ -369,6 +418,18 @@ export const MovieList: React.FC = () => {
   const { movies, loading, error, searchQuery, totalResults } = useAppSelector((state) => state.movies);
   const { isAuthenticated, user } = useAppSelector((state) => state.auth);
   const { favoriteMovieIds, favoriteMovies, showFavoritesOnly, loading: favoritesLoading } = useAppSelector((state) => state.favorites);
+  const { userMovies, loading: userMoviesLoading } = useAppSelector((state) => state.userMovies);
+  
+  // Delete confirmation state
+  const [deleteConfirmation, setDeleteConfirmation] = React.useState<{
+    visible: boolean;
+    movieId: string;
+    movieTitle: string;
+  }>({
+    visible: false,
+    movieId: '',
+    movieTitle: '',
+  });
 
   // Auto-fetch favorites when switching to favorites mode
   React.useEffect(() => {
@@ -377,10 +438,21 @@ export const MovieList: React.FC = () => {
     }
   }, [showFavoritesOnly, isAuthenticated, user?.id, favoriteMovies.length, dispatch]);
 
+  // Auto-fetch user movies when authenticated
+  React.useEffect(() => {
+    if (isAuthenticated && user?.id) {
+      dispatch(fetchUserMovies(user.id));
+    }
+  }, [isAuthenticated, user?.id, dispatch]);
+
+
+  // Combine all movies for display
+  const allMovies = [...movies, ...userMovies];
+
   // Choose movies to display based on favorites toggle
   const filteredMovies = showFavoritesOnly 
     ? favoriteMovies  // Show favorite movies from API
-    : movies;         // Show search results
+    : allMovies;      // Show search results + user movies
 
   const handleToggleFavorite = (movieId: string) => {
     if (isAuthenticated && user?.id) {
@@ -394,8 +466,38 @@ export const MovieList: React.FC = () => {
     }
   };
 
+  const handleDeleteMovie = (movieId: string, movieTitle: string) => {
+    setDeleteConfirmation({
+      visible: true,
+      movieId,
+      movieTitle,
+    });
+  };
+
+  const handleConfirmDelete = async () => {
+    if (isAuthenticated && user?.id && deleteConfirmation.movieId) {
+      try {
+        await dispatch(deleteUserMovie({
+          userId: user.id,
+          movieId: deleteConfirmation.movieId,
+        })).unwrap();
+        
+        // Refresh user movies list after successful deletion
+        dispatch(fetchUserMovies(user.id));
+        
+        setDeleteConfirmation({ visible: false, movieId: '', movieTitle: '' });
+      } catch {
+        // Error handling is done in the slice
+      }
+    }
+  };
+
+  const handleCancelDelete = () => {
+    setDeleteConfirmation({ visible: false, movieId: '', movieTitle: '' });
+  };
+
   // Show loading for both search results and favorites
-  const isLoading = loading || (showFavoritesOnly && favoritesLoading);
+  const isLoading = loading || (showFavoritesOnly && favoritesLoading) || userMoviesLoading;
   
   if (isLoading && filteredMovies.length === 0) {
     return (
@@ -478,9 +580,20 @@ export const MovieList: React.FC = () => {
           index, 
           isAuthenticated,
           favoriteMovieIds.includes(movie.id),
-          handleToggleFavorite
+          handleToggleFavorite,
+          userMovies.some(userMovie => userMovie.id === movie.id), // Can delete if it's a user-created movie
+          handleDeleteMovie
         ))}
       </Row>
+      
+      {/* Delete Confirmation Modal */}
+      <DeleteMovieConfirmation
+        visible={deleteConfirmation.visible}
+        movieTitle={deleteConfirmation.movieTitle}
+        loading={userMoviesLoading}
+        onConfirm={handleConfirmDelete}
+        onCancel={handleCancelDelete}
+      />
     </ListContainer>
   );
 };

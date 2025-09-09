@@ -16,6 +16,10 @@ export const API_CONFIG = {
     // Favorites
     TOGGLE_FAVORITE: '/users/:userId/movies/:movieId/favorite', // PUT - Toggle favorite status
     GET_USER_MOVIES: '/users/:userId/movies', // GET - Get user movies (with ?favorites=true for favorites)
+    
+    // User Movies
+    ADD_USER_MOVIE: '/users/:userId/movies', // POST - Add a new movie
+    DELETE_USER_MOVIE: '/users/:userId/movies/:movieId', // DELETE - Delete a movie
   },
 } as const;
 

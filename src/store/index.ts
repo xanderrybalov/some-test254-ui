@@ -2,12 +2,14 @@ import { configureStore } from '@reduxjs/toolkit';
 import movieReducer from './movieSlice';
 import authReducer from './authSlice';
 import favoritesReducer from './favoritesSlice';
+import userMovieReducer from './userMovieSlice';
 
 export const store = configureStore({
   reducer: {
     movies: movieReducer,
     auth: authReducer,
     favorites: favoritesReducer,
+    userMovies: userMovieReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
