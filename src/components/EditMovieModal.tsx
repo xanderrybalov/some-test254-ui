@@ -194,7 +194,7 @@ export const EditMovieModal: React.FC<EditMovieModalProps> = ({ visible, onClose
         </Button>,
       ]}
       width={600}
-      destroyOnClose
+      destroyOnHidden
     >
       <form onSubmit={handleSubmit(onSubmit)}>
         {/* Title */}
